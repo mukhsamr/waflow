@@ -1,0 +1,13 @@
+diff --git a/src/writer_buffer.js b/src/writer_buffer.js
+index 09a4a912a74cd6cc88c1d485ee095a13c279c410..5faa3ede16e9869fc63539c554085651365b4b53 100644
+--- a/src/writer_buffer.js
++++ b/src/writer_buffer.js
+@@ -57,8 +57,6 @@ BufferWriter.prototype.bytes = function write_bytes_buffer(value) {
+ function writeStringBuffer(val, buf, pos) {
+     if (val.length < 40) // plain js is faster for short strings (probably due to redundant assertions)
+         util.utf8.write(val, buf, pos);
+-    else if (buf.utf8Write)
+-        buf.utf8Write(val, pos);
+     else
+         buf.write(val, pos);
+ }

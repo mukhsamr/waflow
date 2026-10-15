@@ -1,0 +1,17 @@
+{
+  "name": "waflow",
+  "type": "module",
+  "private": true,
+  "packageManager": "bun@1.4.2",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:dashboard": "bun run --cwd apps/dashboard dev",
+    "check": "bun run --cwd apps/api check && bun run --cwd apps/dashboard check",
+    "build": "bun run --cwd apps/api build && bun run --cwd apps/dashboard build"
+  },
+  "patchedDependencies": {
+    "libsignal@6.0.0": "patches/libsignal@6.0.0.patch",
+    "protobufjs@7.6.6": "patches/protobufjs@7.6.6.patch"
+  }
+}

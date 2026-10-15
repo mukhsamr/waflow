@@ -1,0 +1,35 @@
+diff --git a/src/session_record.js b/src/session_record.js
+index 7626a3927fadcdf7f66b3d0c9cf8c63d33da579b..703cbff6a7912a8035ed43573dd6c1f6e5341b12 100644
+--- a/src/session_record.js
++++ b/src/session_record.js
+@@ -267,10 +267,10 @@ class SessionRecord {
+ 
+     closeSession(session) {
+         if (this.isClosed(session)) {
+-            console.warn("Session already closed", session);
++            
+             return;
+         }
+-        console.info("Closing session:", session);
++        
+         session.indexInfo.closed = Date.now();
+     }
+ 
+@@ -278,7 +278,7 @@ class SessionRecord {
+         if (!this.isClosed(session)) {
+             console.warn("Session already open");
+         }
+-        console.info("Opening session:", session);
++        
+         session.indexInfo.closed = -1;
+     }
+ 
+@@ -298,7 +298,7 @@ class SessionRecord {
+                 }
+             }
+             if (oldestKey) {
+-                console.info("Removing old closed session:", oldestSession);
++                
+                 delete this.sessions[oldestKey];
+             } else {
+                 throw new Error('Corrupt sessions object');

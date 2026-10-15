@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import '@nqmcreative/ui/matte/theme.css';
+@import '@nqmcreative/ui/matte/fonts.css';
+
+/* Explicit file globs include component classes through Bun's package junctions
+   on Windows. Tone classes live in the shared core. */
+@source '../node_modules/@nqmcreative/ui/dist/styles/matte/*.svelte';
+@source '../node_modules/@nqmcreative/ui/dist/core/*.js';
