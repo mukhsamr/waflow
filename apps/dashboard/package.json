@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"deploy": "wrangler deploy",
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -25,6 +26,11 @@
 		"typescript": "^6.0.3",
 		"vite": "^8.3.0",
 		"wrangler": "^4.97.0"
+	},
+	"cloudflare": {
+		"bindings": {
+			"API_URL": { "description": "URL HTTPS Worker API yang sudah berhasil dideploy, tanpa path tambahan." }
+		}
 	},
 	"imports": {
 		"#lib": "./src/lib/index.js",

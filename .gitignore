@@ -3,8 +3,7 @@ node_modules
 .wrangler
 .svelte-kit
 worker-configuration.d.ts
-apps/api/wrangler.jsonc
-apps/dashboard/wrangler.jsonc
+.dev.vars
 apps/api/.dev.vars
 apps/dashboard/.dev.vars
 
