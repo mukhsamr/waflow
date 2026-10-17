@@ -1,10 +1,10 @@
 {
-  "$schema": "./apps/api/node_modules/wrangler/config-schema.json",
-  "name": "waflow-api",
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "waflow",
   "workers_dev": true,
-  "main": "apps/api/src/index.ts",
+  "main": ".svelte-kit/cloudflare/_worker.js",
   "alias": {
-    "ws": "./apps/api/src/ws-worker.ts"
+    "ws": "./src/lib/server/gateway/ws-worker.ts"
   },
   "compatibility_date": "2026-10-02",
   "compatibility_flags": [
@@ -42,7 +42,7 @@
       "binding": "DB",
       "database_name": "waflow-db",
       "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "apps/api/migrations"
+      "migrations_dir": "migrations"
     }
   ],
   "migrations": [
@@ -85,5 +85,9 @@
     "crons": [
       "*/5 * * * *"
     ]
+  },
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".svelte-kit/cloudflare"
   }
 }

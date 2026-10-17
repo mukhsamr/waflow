@@ -4,8 +4,7 @@ node_modules
 .svelte-kit
 worker-configuration.d.ts
 .dev.vars
-apps/api/.dev.vars
-apps/dashboard/.dev.vars
+apps
 
 # output
 out

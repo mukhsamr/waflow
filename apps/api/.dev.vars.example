@@ -1,4 +1,0 @@
-ADMIN_EMAIL=admin@example.test
-ADMIN_NAME=Admin Demo
-ADMIN_PASSWORD=replace-with-a-strong-password
-SESSION_SECRET=replace-with-at-least-32-random-characters
