@@ -21,7 +21,11 @@ assert.deepEqual(config.queues.producers.map((entry: { queue: string }) => entry
   config.queues.consumers.map((entry: { queue: string }) => entry.queue).sort());
 assert.equal(new Set(config.queues.consumers.map((entry: { dead_letter_queue: string }) => entry.dead_letter_queue)).size, 2);
 for (const path of ['wrangler.jsonc', 'apps/api/wrangler.jsonc', 'apps/api/wrangler.example.jsonc']) {
-  const { queues } = JSON.parse(read(path));
+  const api = JSON.parse(read(path));
+  assert.equal(api.name, 'waflow-api', path);
+  assert.equal(api.d1_databases[0].database_name, 'waflow-db', path);
+  for (const bucket of api.r2_buckets ?? []) assert.equal(bucket.bucket_name, 'waflow-media', path);
+  const { queues } = api;
   assert.deepEqual(queues.producers.map((entry: { queue: string }) => entry.queue).sort(),
     ['waflow-incoming', 'waflow-outgoing'], path);
   assert.deepEqual(queues.consumers.map((entry: { queue: string }) => entry.queue).sort(),
@@ -38,6 +42,8 @@ assert.equal(pkg.cloudflare, undefined);
 assert.deepEqual(read('.dev.vars.example').trim().split(/\r?\n/).map((line) => line.split('=')),
   config.secrets.required.map((name: string) => [name, '']));
 assert.equal(dashboard.account_id, undefined);
+assert.equal(dashboard.name, 'waflow-dashboard');
+assert.equal(JSON.parse(read('apps/dashboard/wrangler.example.jsonc')).name, dashboard.name);
 assert.ok(Object.hasOwn(dashboard.vars, 'API_URL'));
 assert.ok(read('.gitignore').split(/\r?\n/).includes('.dev.vars'));
 

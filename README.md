@@ -36,7 +36,7 @@ Setelah berhasil, periksa `/health` dan salin URL dasar API.
 
 1. Di repository salinan hasil deploy API, isi `vars.API_URL` pada [`apps/dashboard/wrangler.jsonc`](apps/dashboard/wrangler.jsonc) dengan URL HTTPS API, tanpa `/health`.
 2. Buka **Workers & Pages → Create → Import a repository** dan pilih repository salinan tersebut.
-3. Buat Worker dengan nama sesuai `name` di konfigurasi (default `dashboard`), lalu gunakan pengaturan Dashboard pada tabel di atas.
+3. Buat Worker dengan nama sesuai `name` di konfigurasi (default `waflow-dashboard`), lalu gunakan pengaturan Dashboard pada tabel di atas.
 4. Buka dashboard, login, buat sesi, dan scan QR. Uji kirim/terima teks serta webhook.
 
 <details>

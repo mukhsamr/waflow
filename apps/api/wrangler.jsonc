@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "wa-gateway-api",
+  "name": "waflow-api",
   "account_id": "26bcf77e60dc724167bf27d2f47cc764",
   "main": "src/index.ts",
   "alias": {
@@ -39,14 +39,14 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "wa-gateway-db",
+      "database_name": "waflow-db",
       "database_id": "19968d33-8981-4421-b5a1-25f4094261f1"
     }
   ],
   "r2_buckets": [
     {
       "binding": "MEDIA",
-      "bucket_name": "wa-gateway-media"
+      "bucket_name": "waflow-media"
     }
   ],
   "queues": {
