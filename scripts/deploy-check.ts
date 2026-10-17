@@ -21,7 +21,8 @@ assert.deepEqual(config.queues.consumers.map((entry: { queue: string }) => entry
 assert.deepEqual(config.queues.consumers.map((entry: { dead_letter_queue: string }) => entry.dead_letter_queue).sort(), ['waflow-incoming-failed', 'waflow-outgoing-failed']);
 assert.equal(pkg.workspaces, undefined);
 assert.equal(pkg.scripts.deploy, 'bun scripts/deploy.ts');
-assert.equal(config.vars.ADMIN_NAME, 'Operator');
+assert.equal(config.vars.ADMIN_EMAIL, 'admin@nqmcreative.com');
+assert.equal(config.vars.ADMIN_NAME, 'operator');
 assert.deepEqual(config.secrets.required, ['ADMIN_PASSWORD']);
 assert.equal(pkg.cloudflare, undefined);
 assert.deepEqual(read('.dev.vars.example').trim().split(/\r?\n/).map((line) => line.split('=')), config.secrets.required.map((name: string) => [name, '']));

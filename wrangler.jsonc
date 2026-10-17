@@ -15,8 +15,8 @@
     "nodejs_compat"
   ],
   "vars": {
-    "ADMIN_EMAIL": "",
-    "ADMIN_NAME": "Operator"
+    "ADMIN_EMAIL": "admin@nqmcreative.com",
+    "ADMIN_NAME": "operator"
   },
   "secrets": {
     "required": [
