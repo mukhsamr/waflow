@@ -17,16 +17,18 @@ messaging.use('*', async (c, next) => {
 messaging.use('*', bodyLimit({ maxSize: 24 * 1024, onError: (c) => c.json({ error: 'Permintaan pesan terlalu besar.' }, 413) }));
 messaging.get('/stats', async (c) => {
   const start = Math.floor((Date.now() + 7 * 60 * 60_000) / 86_400_000) * 86_400_000 - 7 * 60 * 60_000;
-  const stats = await c.env.DB.prepare("SELECT COUNT(CASE WHEN created_at >= ? THEN 1 END) AS today, COUNT(CASE WHEN status IN ('queued', 'sending') THEN 1 END) AS pending, COUNT(CASE WHEN status IN ('failed', 'unknown') THEN 1 END) AS attention, COUNT(CASE WHEN direction = 'incoming' AND created_at >= ? THEN 1 END) AS incoming FROM messages").bind(start, start).first();
+  const stats = await c.env.DB.prepare("SELECT COUNT(CASE WHEN created_at >= ? THEN 1 END) AS today, COUNT(CASE WHEN status IN ('queued', 'sending') THEN 1 END) AS pending, COUNT(CASE WHEN status IN ('failed', 'unknown') THEN 1 END) AS attention, COUNT(CASE WHEN direction = 'incoming' AND created_at >= ? THEN 1 END) AS incoming, COUNT(CASE WHEN direction = 'outgoing' AND status = 'sent' THEN 1 END) AS outgoing_success, COUNT(CASE WHEN direction = 'outgoing' AND status = 'failed' THEN 1 END) AS outgoing_failed, COUNT(CASE WHEN direction = 'incoming' AND status = 'received' THEN 1 END) AS incoming_success, COUNT(CASE WHEN direction = 'incoming' AND status = 'failed' THEN 1 END) AS incoming_failed FROM messages").bind(start, start).first();
   return c.json(stats);
 });
 messaging.get('/logs', async c => {
   const sessionId = c.req.query('sessionId') ?? '';
   const status = c.req.query('status') ?? '';
+  const direction = c.req.query('direction') ?? '';
+  if (direction && !['incoming', 'outgoing'].includes(direction)) return c.json({ error: 'Arah pesan tidak valid.' }, 400);
   if (status && !['queued','sending','sent','received','failed','unknown'].includes(status)) return c.json({ error: 'Status tidak valid.' }, 400);
   const before = Number(c.req.query('before') || Date.now() + 1), beforeId = c.req.query('beforeId') ?? '';
   if (!Number.isSafeInteger(before) || before < 0) return c.json({ error: 'Cursor tidak valid.' }, 400);
-  const { results } = await c.env.DB.prepare(`SELECT m.id,m.session_id,s.name AS session_name,m.direction,m.jid,m.status,m.error,m.wa_id,m.wa_ack,m.created_at,m.updated_at FROM messages m JOIN wa_sessions s ON s.id=m.session_id WHERE (m.created_at < ? OR (m.created_at = ? AND m.id < ?)) ${sessionId ? 'AND m.session_id = ?' : ''} ${status ? 'AND m.status = ?' : ''} ORDER BY m.created_at DESC,m.id DESC LIMIT 51`).bind(before,before,beforeId,...(sessionId ? [sessionId] : []),...(status ? [status] : [])).all<MessageRow>();
+  const { results } = await c.env.DB.prepare(`SELECT m.id,m.session_id,s.name AS session_name,m.direction,m.jid,m.status,m.error,m.wa_id,m.wa_ack,m.created_at,m.updated_at FROM messages m JOIN wa_sessions s ON s.id=m.session_id WHERE (m.created_at < ? OR (m.created_at = ? AND m.id < ?)) ${sessionId ? 'AND m.session_id = ?' : ''} ${status ? 'AND m.status = ?' : ''} ${direction ? 'AND m.direction = ?' : ''} ORDER BY m.created_at DESC,m.id DESC LIMIT 51`).bind(before,before,beforeId,...(sessionId ? [sessionId] : []),...(status ? [status] : []),...(direction ? [direction] : [])).all<MessageRow>();
   return c.json({ logs: results.slice(0,50), next: results.length > 50 ? { before: results[49].created_at, beforeId: results[49].id } : null });
 });
 messaging.get('/', async (c) => {

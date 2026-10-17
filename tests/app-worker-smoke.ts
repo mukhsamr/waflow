@@ -60,6 +60,29 @@ try {
   const status = await mf.dispatchFetch(`http://local/api/sessions/${session.id}/status`, { headers });
   assert.equal(status.status, 200);
   assert.equal((await status.json() as { state: string }).state, 'new');
+  for (const [id, direction, recipient, messageStatus] of [
+    ['outgoing-history', 'outgoing', '628111111111@s.whatsapp.net', 'sent'],
+    ['incoming-history', 'incoming', '628222222222@s.whatsapp.net', 'received']
+  ]) {
+    await db.prepare('INSERT INTO messages (id,session_id,direction,jid,text,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)')
+      .bind(id, session.id, direction, recipient, 'Local fixture only', messageStatus, Date.now(), Date.now()).run();
+  }
+  const outgoing = await mf.dispatchFetch('http://local/api/messages/logs?direction=outgoing', { headers });
+  const outgoingLogs = await outgoing.json() as { logs: { id: string }[] };
+  assert.deepEqual(outgoingLogs.logs.map(row => row.id), ['outgoing-history']);
+  assert.equal((await mf.dispatchFetch('http://local/api/messages/logs?direction=invalid', { headers })).status, 400);
+  const historyHtml = await (await mf.dispatchFetch('http://local/app/messages', { headers: { Cookie: cookie } })).text();
+  assert.ok(historyHtml.includes('Riwayat pengiriman') && historyHtml.includes('628111111111') && historyHtml.includes('Terkirim'));
+  assert.ok(!historyHtml.includes('628222222222') && !historyHtml.includes('Permintaan diterima:'));
+  for (const [id, direction, messageStatus] of [['out-failed','outgoing','failed'],['out-pending','outgoing','queued'],['out-unknown','outgoing','unknown'],['in-failed','incoming','failed']]) {
+    await db.prepare('INSERT INTO messages (id,session_id,direction,jid,text,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)')
+      .bind(id,session.id,direction,'628333333333@s.whatsapp.net','Fixture',messageStatus,Date.now(),Date.now()).run();
+  }
+  const stats = await (await mf.dispatchFetch('http://local/api/messages/stats', {headers})).json() as Record<string,number>;
+  assert.deepEqual([stats.outgoing_success,stats.outgoing_failed,stats.incoming_success,stats.incoming_failed],[1,1,1,1]);
+  const activityHtml = await (await mf.dispatchFetch('http://local/app/activity', {headers:{Cookie:cookie}})).text();
+  assert.ok(activityHtml.includes('Pesan keluar') && activityHtml.includes('Pesan masuk'));
+  assert.ok(!activityHtml.includes('Tampilkan</button>') && !activityHtml.includes('<label'));
   assert.equal((await mf.dispatchFetch('http://local/api/auth/api-keys', { method: 'POST', headers, body: '{"name":"test"}' })).status, 201);
   const forged = await mf.dispatchFetch('http://local/app/settings?/key', { method: 'POST', headers: { Origin: 'https://other.example', Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'name=forged' });
   assert.equal(forged.status, 403);

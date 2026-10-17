@@ -1,14 +1,19 @@
 <script lang="ts">
  import { enhance, type SubmitFunction } from '$app/forms';
- import { untrack } from 'svelte';
+ import { onMount, untrack } from 'svelte';
+ import { invalidateAll } from '$app/navigation';
  import { Send } from '@lucide/svelte';
- import { Button, Input, Textarea } from '@nqmcreative/ui/matte';
+ import { Badge, Button, Input, Table, Textarea } from '@nqmcreative/ui/matte';
  let { data, form } = $props();
  let busy = $state(false);
  let selected = $state(untrack(() => data.sessionId || data.sessions.find(s => s.status.state === 'connected')?.id || ''));
  let text = $state('');
  let key = $state(untrack(() => form && 'idempotencyKey' in form ? form.idempotencyKey : data.idempotencyKey));
  const connected = $derived(data.sessions.find(s => s.id === selected)?.status.state === 'connected');
+ const labels: Record<string,string> = { queued:'Dalam antrean', sending:'Mengirim', sent:'Terkirim', failed:'Gagal', unknown:'Belum pasti' };
+ const columns = [{key:'created_at',label:'Waktu'},{key:'jid',label:'Penerima'},{key:'session_name',label:'Sesi'},{key:'status',label:'Status'}];
+ onMount(() => { const timer = setInterval(() => { if (document.visibilityState === 'visible' && !busy) void invalidateAll(); }, 5000); return () => clearInterval(timer); });
+ const older = () => `/app/messages?${new URLSearchParams({ sessionId: data.sessionId, before: String(data.next?.before), beforeId: data.next?.beforeId ?? '' })}`;
  const send: SubmitFunction = ({ cancel }) => {
    if (busy || !connected) { cancel(); return; }
    busy = true;
@@ -28,7 +33,20 @@
   </fieldset>
   {#if selected && !connected}<p class="text-sm text-warning">Hubungkan sesi sebelum mengirim.</p>{/if}
   {#if form && 'error' in form}<p role="alert" class="text-sm text-danger">{form.error}</p>{/if}
-  {#if form && 'accepted' in form}<div role="status" class="border border-hairline bg-success-light p-4 text-sm"><p>Permintaan diterima: {form.status}</p><code class="mt-2 block break-all">{form.id}</code><a class="mt-3 inline-block text-brand hover:underline" href="/app/activity">Periksa hasil di log aktivitas</a></div>{/if}
   <Button type="submit" variant="primary" loading={busy} disabled={busy || !connected}><Send size={16} aria-hidden="true" /> Kirim teks</Button>
  </form>
+</section>
+<section class="mt-8 border border-hairline bg-bg">
+ <h2 class="border-b border-hairline p-5 font-heading text-xl">Riwayat pengiriman</h2>
+ {#if data.logError}<p role="alert" class="p-5 text-sm text-danger">{data.logError}</p>{/if}
+ <Table {columns} rows={data.logs}>
+  {#snippet cell({row,column})}
+   {#if column.key==='created_at'}<time class="whitespace-nowrap" datetime={new Date(row.created_at).toISOString()}>{new Date(row.created_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})}</time>
+   {:else if column.key==='jid'}{row.jid.replace(/@.*$/, '')}
+   {:else if column.key==='status'}<Badge size="sm" tone={row.status==='sent' ? 'success' : row.status==='failed' ? 'danger' : row.status==='unknown' ? 'warning' : 'neutral'}>{labels[row.status] ?? row.status}</Badge>{#if row.error}<p class="mt-2 text-xs text-danger">{row.error}</p>{/if}
+   {:else}{row.session_name}{/if}
+  {/snippet}
+  {#snippet empty()}Belum ada pengiriman.{/snippet}
+ </Table>
+ {#if data.next}<div class="border-t border-hairline p-4"><a href={older()} class="text-sm text-brand hover:underline">Lebih lama</a></div>{/if}
 </section>

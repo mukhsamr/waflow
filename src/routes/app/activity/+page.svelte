@@ -1,24 +1,38 @@
 <script lang="ts">
  import { onMount } from 'svelte';
- import { invalidateAll } from '$app/navigation';
- import { Badge, Button, Table } from '@nqmcreative/ui/matte';
+ import { goto, invalidateAll } from '$app/navigation';
+ import { ArrowDownLeft, ArrowUpRight, CircleCheck, CircleX } from '@lucide/svelte';
+ import { Badge, Table } from '@nqmcreative/ui/matte';
  let { data } = $props();
  const labels: Record<string,string> = { queued:'Dalam antrean',sending:'Mengirim',sent:'Dikirim',received:'Pesan masuk',failed:'Gagal',unknown:'Hasil belum pasti' };
  const columns = [{key:'created_at',label:'Waktu',class:'whitespace-nowrap'},{key:'jid',label:'Sesi / penerima'},{key:'status',label:'Status'},{key:'wa_ack',label:'Receipt WA'},{key:'id',label:'ID / error',class:'max-w-80 break-all'}];
  const ack = (value: number) => value >= 4 ? 'Dibaca' : value === 3 ? 'Diterima perangkat' : value === 2 ? 'Diterima server WA' : value === -1 ? 'Ditolak WA' : 'Belum ada receipt';
  onMount(() => { const timer=setInterval(() => { if(document.visibilityState==='visible') void invalidateAll(); },5000); return () => clearInterval(timer); });
  const older = () => `/app/activity?${new URLSearchParams({ sessionId:data.sessionId,status:data.status,before:String(data.next?.before),beforeId:data.next?.beforeId ?? '' })}`;
+ function filter(event: Event) {
+  const form = (event.currentTarget as HTMLSelectElement).form!;
+  void goto(`/app/activity?${new URLSearchParams(new FormData(form) as Iterable<[string,string]>)}`, { keepFocus: true, noScroll: true });
+ }
 </script>
 <svelte:head><title>Log aktivitas · waflow</title></svelte:head>
 <h1 class="font-heading text-3xl font-medium tracking-tight">Log aktivitas</h1>
 {#if data.error}<p role="alert" class="mt-5 text-danger">{data.error}</p>{/if}
-<div class="mt-8 grid gap-px border border-hairline bg-hairline md:grid-cols-3">
- <div class="bg-bg p-6"><p class="text-sm text-text-muted">Dalam antrean</p><p class="mt-4 text-3xl">{data.stats?.pending ?? '—'}</p></div>
- <div class="bg-bg p-6"><p class="text-sm text-text-muted">Pesan masuk hari ini</p><p class="mt-4 text-3xl">{data.stats?.incoming ?? '—'}</p></div>
- <div class="bg-bg p-6"><p class="text-sm text-text-muted">Gagal / belum pasti</p><p class="mt-4 text-3xl">{data.stats?.attention ?? '—'}</p></div>
+<div class="mt-8 grid gap-5 md:grid-cols-2">
+ {#each [{ label:'Pesan keluar', icon:ArrowUpRight, color:'text-info', success:data.stats?.outgoing_success, failed:data.stats?.outgoing_failed },{ label:'Pesan masuk', icon:ArrowDownLeft, color:'text-accent', success:data.stats?.incoming_success, failed:data.stats?.incoming_failed }] as card}
+ <section class="flex flex-wrap items-center justify-between gap-5 border border-hairline bg-bg p-5">
+  <h2 class="flex items-center gap-2 font-heading text-base"><card.icon class={card.color} size={20} aria-hidden="true" />{card.label}</h2>
+  <div class="flex items-center gap-5 text-sm">
+   <p class="flex items-center gap-2"><CircleCheck class="text-success" size={16} aria-hidden="true" /><span class="text-text-muted">Sukses</span><span class="font-medium tabular-nums">{card.success ?? '—'}</span></p>
+   <p class="flex items-center gap-2"><CircleX class="text-danger" size={16} aria-hidden="true" /><span class="text-text-muted">Gagal</span><span class="font-medium tabular-nums">{card.failed ?? '—'}</span></p>
+  </div>
+ </section>
+ {/each}
 </div>
 <section class="mt-6 border border-hairline bg-bg">
- <form method="GET" class="flex flex-wrap items-end gap-4 border-b border-hairline p-5"><div><label for="log-session" class="mb-2 block text-sm">Sesi</label><select id="log-session" name="sessionId" value={data.sessionId} class="border border-hairline bg-bg p-2 text-sm"><option value="">Semua sesi</option>{#each data.sessions as s}<option value={s.id}>{s.name}</option>{/each}</select></div><div><label for="log-status" class="mb-2 block text-sm">Status</label><select id="log-status" name="status" value={data.status} class="border border-hairline bg-bg p-2 text-sm"><option value="">Semua status</option>{#each Object.entries(labels) as [value,label]}<option {value}>{label}</option>{/each}</select></div><Button type="submit" variant="soft" tone="neutral">Tampilkan</Button></form>
+ <form method="GET" class="flex flex-wrap gap-4 border-b border-hairline p-5">
+  <select aria-label="Sesi" name="sessionId" value={data.sessionId} onchange={filter} class="border border-hairline bg-bg p-2 text-sm"><option value="">Semua sesi</option>{#each data.sessions as s}<option value={s.id}>{s.name}</option>{/each}</select>
+  <select aria-label="Status" name="status" value={data.status} onchange={filter} class="border border-hairline bg-bg p-2 text-sm"><option value="">Semua status</option>{#each Object.entries(labels) as [value,label]}<option {value}>{label}</option>{/each}</select>
+ </form>
  <Table {columns} rows={data.logs}>
   {#snippet cell({row,column})}
    {#if column.key==='created_at'}<time datetime={new Date(row.created_at).toISOString()}>{new Date(row.created_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})}</time>
