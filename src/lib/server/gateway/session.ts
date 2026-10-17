@@ -21,6 +21,10 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
   private sends = new Map<string, Promise<SendResult>>();
   private stopping = false;
 
+  private logConnection(event: string, details: Record<string, number | boolean | string | undefined> = {}): void {
+    console.info({ component: 'wa-session', objectId: this.ctx.id.toString(), event, generation: this.generation, ...details });
+  }
+
   private refreshAvatar(socket: WASocket): void {
     if (this.avatarPromise) return;
     const jid = socket.user?.id;
@@ -41,6 +45,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
   }
 
   private storageFailed(socket?: WASocket): void {
+    this.logConnection('credential-storage-failed');
     this.generation++;
     this.socket = undefined;
     this.setState('disconnected', 'Credential WhatsApp gagal disimpan. Koneksi dihentikan.');
@@ -213,6 +218,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
   }
 
   private clearUnconfirmedPairing(): void {
+    this.logConnection('unconfirmed-pairing-cleared', { registered: Boolean(this.read<AuthenticationCreds>('creds')?.registered) });
     this.generation++;
     this.socket?.end(new Error('Unconfirmed pairing ended'));
     this.socket = undefined;
@@ -310,6 +316,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
   private async openSocket(): Promise<void> {
     const generation = ++this.generation;
     const creds = this.read<AuthenticationCreds>('creds') ?? initAuthCreds();
+    this.logConnection('socket-start', { registered: Boolean(creds.registered), pairConfirmed: this.pairConfirmed() });
     const auth: AuthenticationState = {
       creds,
       keys: {
@@ -337,6 +344,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
     this.setState(creds.registered ? 'reconnecting' : 'connecting');
     try {
       const { version } = await fetchLatestWaWebVersion({ signal: AbortSignal.timeout(10_000) });
+      this.logConnection('web-version', { version: version.join('.') });
       const logger = pino({ level: 'silent' });
       const socket = makeWASocket({ auth, version, logger, printQRInTerminal: false, syncFullHistory: false });
       this.socket = socket;
@@ -372,12 +380,18 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
         try {
           Object.assign(creds, update);
           this.write('creds', creds);
+          if (update.registered !== undefined) this.logConnection('registration-updated', { registered: Boolean(creds.registered) });
         } catch {
           this.storageFailed(socket);
         }
       });
       socket.ev.on('connection.update', (update) => {
         if (generation !== this.generation) return;
+        if (update.qr || update.isNewLogin || update.connection) this.logConnection('connection-update', {
+          connection: update.connection, qrAvailable: Boolean(update.qr), newLogin: Boolean(update.isNewLogin),
+          registered: Boolean(creds.registered), pairConfirmed: this.pairConfirmed(),
+          disconnectCode: (update.lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode
+        });
         if (update.isNewLogin || update.connection === 'open') this.ctx.storage.sql.exec("INSERT INTO state (key, value) VALUES ('pair-confirmed', 'true') ON CONFLICT(key) DO UPDATE SET value = excluded.value");
         if (update.qr) {
           this.qr = update.qr;
@@ -417,6 +431,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
       if (creds.registered && this.pairConfirmed()) await this.ctx.storage.setAlarm(Date.now() + 120_000);
     } catch (error) {
       this.socket = undefined;
+      this.logConnection('socket-start-failed', { registered: Boolean(creds.registered) });
       this.setState('disconnected', 'Gagal memulai koneksi WhatsApp. Coba sambungkan ulang.');
       if (creds.registered && this.pairConfirmed()) await this.ctx.storage.setAlarm(Date.now() + this.retryDelay());
       throw error;

@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
 const config = JSON.parse(read('wrangler.jsonc'));
 const pkg = JSON.parse(read('package.json'));
 assert.equal(config.name, 'waflow');
+assert.deepEqual(config.observability, { enabled: true, head_sampling_rate: 1 });
 assert.equal(config.account_id, undefined);
 assert.equal(config.main, '.svelte-kit/cloudflare/_worker.js');
 assert.equal(config.assets.binding, 'ASSETS');

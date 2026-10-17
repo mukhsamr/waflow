@@ -2,6 +2,10 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "waflow",
   "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
   "main": ".svelte-kit/cloudflare/_worker.js",
   "alias": {
     "ws": "./src/lib/server/gateway/ws-worker.ts"

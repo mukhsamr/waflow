@@ -21,6 +21,7 @@ try {
 const db = new Database(':memory:');
 let alarmAt: number | null = null;
 const ctx = {
+  id: { toString: () => 'test-object' },
   storage: {
     sql: { exec: (sql: string, ...values: (string | number)[]) => {
       const statement = db.prepare(sql);
@@ -45,6 +46,13 @@ const session = new WaSession(ctx as unknown as DurableObjectState, { INCOMING_Q
   queued++;
 } } as unknown as Queue });
 const state = session as unknown as { socket: unknown; setState: (value: string) => void; flushIncoming: () => Promise<void>; stopConnectionAlarm: () => Promise<void> };
+const logged: unknown[] = [];
+const originalInfo = console.info;
+try {
+  console.info = (entry) => { logged.push(entry); };
+  (session as unknown as { logConnection: (event: string, details: Record<string, unknown>) => void }).logConnection('connection-update', { disconnectCode: 401, registered: false });
+  assert.deepEqual(logged, [{ component: 'wa-session', objectId: 'test-object', event: 'connection-update', generation: 0, disconnectCode: 401, registered: false }]);
+} finally { console.info = originalInfo; }
 state.setState('connected');
 let sent = 0;
 state.socket = { sendMessage: async () => { sent++; await Promise.resolve(); } };
