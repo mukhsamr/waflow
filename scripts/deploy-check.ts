@@ -20,6 +20,15 @@ assert.ok(config.migrations[0].new_sqlite_classes.includes('WaSession'));
 assert.deepEqual(config.queues.producers.map((entry: { queue: string }) => entry.queue).sort(),
   config.queues.consumers.map((entry: { queue: string }) => entry.queue).sort());
 assert.equal(new Set(config.queues.consumers.map((entry: { dead_letter_queue: string }) => entry.dead_letter_queue)).size, 2);
+for (const path of ['wrangler.jsonc', 'apps/api/wrangler.jsonc', 'apps/api/wrangler.example.jsonc']) {
+  const { queues } = JSON.parse(read(path));
+  assert.deepEqual(queues.producers.map((entry: { queue: string }) => entry.queue).sort(),
+    ['waflow-incoming', 'waflow-outgoing'], path);
+  assert.deepEqual(queues.consumers.map((entry: { queue: string }) => entry.queue).sort(),
+    ['waflow-incoming', 'waflow-outgoing'], path);
+  assert.deepEqual(queues.consumers.map((entry: { dead_letter_queue: string }) => entry.dead_letter_queue).sort(),
+    ['waflow-incoming-failed', 'waflow-outgoing-failed'], path);
+}
 assert.equal(pkg.scripts.deploy, 'bun run --cwd apps/api deploy:install');
 assert.equal(apiPackage.scripts['deploy:install'], 'bun ../../scripts/deploy-api.ts');
 assert.equal(config.vars.ADMIN_EMAIL, '');

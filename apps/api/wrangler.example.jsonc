@@ -53,26 +53,26 @@
   "queues": {
     "producers": [
       {
-        "queue": "wa-gateway-outgoing",
+        "queue": "waflow-outgoing",
         "binding": "OUTGOING_QUEUE"
       },
       {
-        "queue": "wa-gateway-incoming",
+        "queue": "waflow-incoming",
         "binding": "INCOMING_QUEUE"
       }
     ],
     "consumers": [
       {
-        "dead_letter_queue": "wa-gateway-outgoing-failed",
+        "dead_letter_queue": "waflow-outgoing-failed",
         "max_batch_timeout": 1,
-        "queue": "wa-gateway-outgoing",
+        "queue": "waflow-outgoing",
         "max_batch_size": 10,
         "max_retries": 5
       },
       {
-        "dead_letter_queue": "wa-gateway-incoming-failed",
+        "dead_letter_queue": "waflow-incoming-failed",
         "max_batch_timeout": 1,
-        "queue": "wa-gateway-incoming",
+        "queue": "waflow-incoming",
         "max_batch_size": 20,
         "max_retries": 5
       }
