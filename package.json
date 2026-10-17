@@ -11,15 +11,7 @@
     "build": "bun run --cwd apps/api build && bun run --cwd apps/dashboard build",
     "deploy": "bun run --cwd apps/api deploy:install",
     "deploy:dashboard": "bun run --cwd apps/dashboard deploy",
-    "check:deploy": "bun scripts/deploy-check.ts"
-  },
-  "cloudflare": {
-    "bindings": {
-      "ADMIN_EMAIL": { "description": "Email untuk login panel operator." },
-      "ADMIN_NAME": { "description": "Nama operator yang ditampilkan di panel." },
-      "ADMIN_PASSWORD": { "description": "Isi password kuat dan unik; jangan gunakan nilai contoh." },
-      "SESSION_SECRET": { "description": "Isi secret acak minimal 32 karakter. Simpan nilainya; perubahan secret membuat webhook tersimpan tidak dapat dibaca." }
-    }
+    "check:deploy": "bun scripts/deploy-check.ts && bun scripts/deploy-api-check.ts"
   },
   "patchedDependencies": {
     "libsignal@6.0.0": "patches/libsignal@6.0.0.patch",

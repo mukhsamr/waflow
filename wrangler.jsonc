@@ -10,12 +10,13 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "vars": {
+    "ADMIN_EMAIL": "",
+    "ADMIN_NAME": "Operator"
+  },
   "secrets": {
     "required": [
-      "ADMIN_EMAIL",
-      "ADMIN_NAME",
-      "ADMIN_PASSWORD",
-      "SESSION_SECRET"
+      "ADMIN_PASSWORD"
     ]
   },
   "ratelimits": [

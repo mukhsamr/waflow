@@ -27,11 +27,6 @@
 		"vite": "^8.3.0",
 		"wrangler": "^4.97.0"
 	},
-	"cloudflare": {
-		"bindings": {
-			"API_URL": { "description": "URL HTTPS Worker API yang sudah berhasil dideploy, tanpa path tambahan." }
-		}
-	},
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"

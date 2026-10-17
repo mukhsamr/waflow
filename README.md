@@ -12,14 +12,15 @@ Tombol memasang API, D1, Durable Object, dan Queues. Dashboard dipasang terpisah
 
 ### 1. API
 
-Klik tombol di atas, hubungkan akun GitHub dan Cloudflare, lalu isi secret:
+Klik tombol di atas, hubungkan akun GitHub dan Cloudflare, lalu isi:
 
-| Secret | Isi |
+| Konfigurasi | Isi |
 | --- | --- |
 | `ADMIN_EMAIL` | Email login |
 | `ADMIN_NAME` | Nama operator |
-| `ADMIN_PASSWORD` | Password kuat dan unik |
-| `SESSION_SECRET` | Nilai acak minimal 32 karakter |
+| `ADMIN_PASSWORD` | Password login (secret) |
+
+`SESSION_SECRET` dibuat otomatis saat deploy pertama dan dipertahankan saat deploy ulang.
 
 Gunakan pengaturan berikut. Migrasi D1 dijalankan otomatis saat deploy.
 
@@ -45,14 +46,13 @@ Setelah berhasil, periksa `/health` dan salin URL dasar API.
 - Jika dead-letter Queue belum dibuat otomatis, buat Queue sesuai kedua nilai `dead_letter_queue` dalam konfigurasi API.
 - Gunakan `bun install --frozen-lockfile` jika diminta perintah instalasi dependency. Biarkan watch path mencakup root, `apps/`, `patches/`, dan `bun.lock`.
 - Ganti `namespace_id` rate limit jika sudah dipakai Worker lain di akun Anda.
-- Simpan `SESSION_SECRET`. Menggantinya membuat konfigurasi webhook tersimpan tidak dapat dibaca.
 - Secret disimpan di Cloudflare atau `.dev.vars` lokal, jangan di Git. Tinjau migrasi baru sebelum deploy ulang ke produksi.
 
 </details>
 
 ## Development
 
-Memerlukan [Bun](https://bun.sh). Salin `apps/api/.dev.vars.example` ke `apps/api/.dev.vars`, lalu isi keempat secret di atas.
+Memerlukan [Bun](https://bun.sh). Salin `apps/api/.dev.vars.example` ke `apps/api/.dev.vars`, lalu isi konfigurasi lokal.
 
 ```sh
 bun install

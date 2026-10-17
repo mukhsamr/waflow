@@ -21,7 +21,11 @@ assert.deepEqual(config.queues.producers.map((entry: { queue: string }) => entry
   config.queues.consumers.map((entry: { queue: string }) => entry.queue).sort());
 assert.equal(new Set(config.queues.consumers.map((entry: { dead_letter_queue: string }) => entry.dead_letter_queue)).size, 2);
 assert.equal(pkg.scripts.deploy, 'bun run --cwd apps/api deploy:install');
-assert.equal(apiPackage.scripts['deploy:install'], 'wrangler d1 migrations apply DB --remote --config ../../wrangler.jsonc && wrangler deploy --config ../../wrangler.jsonc');
+assert.equal(apiPackage.scripts['deploy:install'], 'bun ../../scripts/deploy-api.ts');
+assert.equal(config.vars.ADMIN_EMAIL, '');
+assert.equal(config.vars.ADMIN_NAME, 'Operator');
+assert.deepEqual(config.secrets.required, ['ADMIN_PASSWORD']);
+assert.equal(pkg.cloudflare, undefined);
 assert.deepEqual(read('.dev.vars.example').trim().split(/\r?\n/).map((line) => line.split('=')),
   config.secrets.required.map((name: string) => [name, '']));
 assert.equal(dashboard.account_id, undefined);
