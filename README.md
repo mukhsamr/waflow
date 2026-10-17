@@ -2,7 +2,7 @@
 
 Gateway WhatsApp untuk Cloudflare. Kelola sesi, kirim teks lewat API, dan terima event melalui webhook.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fmukhsamr%2Fwhatsapp)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fmukhsamr%2Fwaflow)
 
 **Sesi & QR** · **API key** · **Webhook** · **Log aktivitas**
 

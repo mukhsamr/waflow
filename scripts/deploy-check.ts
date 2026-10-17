@@ -37,7 +37,7 @@ const badge = readme.match(/\[!\[Deploy to Cloudflare\]\(https:\/\/deploy\.worke
 assert.ok(badge, 'README must include the official deploy button');
 const url = new URL(badge[1]);
 assert.equal(url.origin, 'https://deploy.workers.cloudflare.com');
-assert.equal(url.searchParams.get('url'), 'https://github.com/mukhsamr/whatsapp');
+assert.equal(url.searchParams.get('url'), 'https://github.com/mukhsamr/waflow');
 assert.ok(readme.includes('repository harus **public**'));
 assert.ok(readme.includes('bun run deploy:dashboard'));
 console.log('Deploy configuration, migrations, secrets, and README button checks passed.');
