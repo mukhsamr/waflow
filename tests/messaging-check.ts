@@ -28,6 +28,7 @@ const ctx = {
       return { toArray: () => statement.all(...values) };
     } },
     transactionSync: (operation: () => void) => db.transaction(operation)(),
+    getAlarm: async () => alarmAt,
     setAlarm: async (at: number) => { alarmAt = at; }, deleteAlarm: async () => { alarmAt = null; }
   },
   waitUntil: (promise: Promise<unknown>) => { void promise; }
@@ -85,6 +86,21 @@ await session.ackIncoming('in-test');
 assert.equal(await session.incomingMessage('in-test'), null);
 await state.stopConnectionAlarm();
 assert.equal(alarmAt, null);
+const alarms = session as unknown as { scheduleAlarm: (at: number) => Promise<void>; restartAfterPairing: () => Promise<void> };
+const soon = Date.now() + 1000;
+await Promise.all([alarms.scheduleAlarm(soon), alarms.scheduleAlarm(soon + 120_000)]);
+assert.equal(alarmAt, soon, 'Outbox retry must not postpone reconnect');
+alarmAt = null;
+await Promise.all([alarms.scheduleAlarm(soon + 120_000), alarms.scheduleAlarm(soon)]);
+assert.equal(alarmAt, soon, 'Reconnect must advance an existing outbox alarm');
+ctx.storage.sql.exec('INSERT INTO auth (key,value) VALUES (?,?)', 'creds', JSON.stringify({ registered: true }));
+await alarms.restartAfterPairing();
+assert.ok(alarmAt! <= Date.now() + 1100, 'Pairing restart must run promptly');
+assert.equal((await session.status()).state, 'reconnecting');
+assert.equal((await session.status()).error, undefined, '515 is not a user-facing failure');
+assert.ok(db.query("SELECT value FROM auth WHERE key='creds'").get(), 'Pairing restart must preserve credentials');
+ctx.storage.sql.exec("DELETE FROM auth WHERE key='creds'");
+alarmAt = null;
 console.log('Messaging check passed: concurrent dedup, persisted outcomes, interrupted sends, incoming outbox.');
 
 const { default: messaging, consumeMessages } = await import('../src/lib/server/gateway/messaging');

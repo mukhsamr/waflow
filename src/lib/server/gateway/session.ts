@@ -20,6 +20,22 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
   private flushPromise?: Promise<void>;
   private sends = new Map<string, Promise<SendResult>>();
   private stopping = false;
+  private alarmUpdate: Promise<void> = Promise.resolve();
+
+  private scheduleAlarm(at: number): Promise<void> {
+    const update = this.alarmUpdate.then(async () => {
+      const current = await this.ctx.storage.getAlarm();
+      if (current === null || at < current) await this.ctx.storage.setAlarm(at);
+    });
+    this.alarmUpdate = update.catch(() => {});
+    return update;
+  }
+
+  private restartAfterPairing(): Promise<void> {
+    this.logConnection('pairing-restart');
+    this.setState('reconnecting');
+    return this.scheduleAlarm(Date.now() + 1000);
+  }
 
   private logConnection(event: string, details: Record<string, number | boolean | string | undefined> = {}): void {
     console.info({ component: 'wa-session', objectId: this.ctx.id.toString(), event, generation: this.generation, ...details });
@@ -49,7 +65,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
     this.generation++;
     this.socket = undefined;
     this.setState('disconnected', 'Credential WhatsApp gagal disimpan. Koneksi dihentikan.');
-    this.ctx.waitUntil(this.ctx.storage.setAlarm(Date.now() + this.retryDelay()));
+    this.ctx.waitUntil(this.scheduleAlarm(Date.now() + this.retryDelay()));
     socket?.end(new Error('Credential storage failed'));
   }
 
@@ -120,7 +136,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
   }
 
   private async stopConnectionAlarm(): Promise<void> {
-    if (this.ctx.storage.sql.exec('SELECT 1 FROM incoming_outbox UNION ALL SELECT 1 FROM receipt_outbox UNION ALL SELECT 1 FROM gateway_outbox LIMIT 1').toArray().length) await this.ctx.storage.setAlarm(Date.now() + 120_000);
+    if (this.ctx.storage.sql.exec('SELECT 1 FROM incoming_outbox UNION ALL SELECT 1 FROM receipt_outbox UNION ALL SELECT 1 FROM gateway_outbox LIMIT 1').toArray().length) await this.scheduleAlarm(Date.now() + 120_000);
     else await this.ctx.storage.deleteAlarm();
   }
 
@@ -149,7 +165,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
           if (current?.ack === receipt.ack) this.ctx.storage.sql.exec('UPDATE receipt_outbox SET value = ? WHERE id = ?', JSON.stringify({ ...receipt, publishedAt: Date.now() }), row.id);
         }
       } finally {
-        if (this.ctx.storage.sql.exec('SELECT 1 FROM incoming_outbox UNION ALL SELECT 1 FROM receipt_outbox UNION ALL SELECT 1 FROM gateway_outbox LIMIT 1').toArray().length) await this.ctx.storage.setAlarm(Date.now() + 120_000);
+        if (this.ctx.storage.sql.exec('SELECT 1 FROM incoming_outbox UNION ALL SELECT 1 FROM receipt_outbox UNION ALL SELECT 1 FROM gateway_outbox LIMIT 1').toArray().length) await this.scheduleAlarm(Date.now() + 120_000);
       }
     })().finally(() => { this.flushPromise = undefined; });
     return this.flushPromise;
@@ -307,7 +323,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
     }
     try {
       await this.start();
-      await this.ctx.storage.setAlarm(Date.now() + 120_000);
+      await this.scheduleAlarm(Date.now() + 120_000);
     } catch {
       // openSocket already scheduled the bounded retry.
     }
@@ -397,7 +413,7 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
           this.qr = update.qr;
           if (!this.qrExpiresAt) {
             this.qrExpiresAt = Date.now() + 30_000;
-            this.ctx.waitUntil(this.ctx.storage.setAlarm(this.qrExpiresAt));
+            this.ctx.waitUntil(this.scheduleAlarm(this.qrExpiresAt));
           }
           this.setState('pairing');
         }
@@ -419,21 +435,23 @@ export class WaSession extends DurableObject<{ INCOMING_QUEUE: Queue<MessageJob>
             this.ctx.storage.sql.exec("DELETE FROM state WHERE key = 'avatar'");
             this.ctx.storage.sql.exec("DELETE FROM state WHERE key = 'pair-confirmed'");
             this.setState('logged-out', `WhatsApp menolak atau mengakhiri sesi (${code}). Minta QR baru lalu coba lagi.`);
+          } else if (code === DisconnectReason.restartRequired && this.pairConfirmed()) {
+            this.ctx.waitUntil(this.restartAfterPairing());
           } else if (!this.pairConfirmed()) {
             this.clearUnconfirmedPairing();
             this.ctx.waitUntil(this.stopConnectionAlarm());
           } else {
             this.setState('reconnecting', code ? `Koneksi terputus (${code}).` : 'Koneksi terputus.');
-            this.ctx.waitUntil(this.ctx.storage.setAlarm(Date.now() + this.retryDelay()));
+            this.ctx.waitUntil(this.scheduleAlarm(Date.now() + this.retryDelay()));
           }
         }
       });
-      if (creds.registered && this.pairConfirmed()) await this.ctx.storage.setAlarm(Date.now() + 120_000);
+      if (creds.registered && this.pairConfirmed()) await this.scheduleAlarm(Date.now() + 120_000);
     } catch (error) {
       this.socket = undefined;
       this.logConnection('socket-start-failed', { registered: Boolean(creds.registered) });
       this.setState('disconnected', 'Gagal memulai koneksi WhatsApp. Coba sambungkan ulang.');
-      if (creds.registered && this.pairConfirmed()) await this.ctx.storage.setAlarm(Date.now() + this.retryDelay());
+      if (creds.registered && this.pairConfirmed()) await this.scheduleAlarm(Date.now() + this.retryDelay());
       throw error;
     }
   }
