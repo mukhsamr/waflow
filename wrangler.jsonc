@@ -20,7 +20,8 @@
   },
   "secrets": {
     "required": [
-      "ADMIN_PASSWORD"
+      "ADMIN_PASSWORD",
+      "SESSION_SECRET"
     ]
   },
   "ratelimits": [
