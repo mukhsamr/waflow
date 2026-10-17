@@ -62,7 +62,7 @@ auth.get('/me', async (c) => {
 auth.post('/logout', (c) => c.json({ ok: true }));
 auth.get('/api-keys', async (c) => {
   if (!(await sessionUserFromToken(c.env, c.req.header('Authorization')))) return c.json({ error: 'Forbidden' }, 403);
-  const { results } = await c.env.DB.prepare('SELECT id, name, created_at, last_used_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC').all();
+  const { results } = await c.env.DB.prepare('SELECT id, name, token_preview, created_at, last_used_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC').all();
   return c.json({ keys: results });
 });
 auth.post('/api-keys', async (c) => {
@@ -72,9 +72,24 @@ auth.post('/api-keys', async (c) => {
   if (!name || name.length > 80) return c.json({ error: 'Nama API key tidak valid.' }, 400);
   const token = newToken();
   const id = crypto.randomUUID();
-  await c.env.DB.prepare('INSERT INTO api_keys (id, name, token_hash, created_by, created_at) VALUES (?, ?, ?, ?, ?)')
-    .bind(id, name, await sha256(token), 'env-owner', Date.now()).run();
+  await c.env.DB.prepare('INSERT INTO api_keys (id, name, token_hash, created_by, created_at, token_preview) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(id, name, await sha256(token), 'env-owner', Date.now(), token.slice(-4)).run();
   return c.json({ id, token }, 201);
+});
+auth.patch('/api-keys/:id', async (c) => {
+  if (!(await sessionUserFromToken(c.env, c.req.header('Authorization')))) return c.json({ error: 'Forbidden' }, 403);
+  const body = await c.req.json().catch(() => null) as Record<string, unknown> | null;
+  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  if (!name || name.length > 80) return c.json({ error: 'Nama API key tidak valid.' }, 400);
+  const result = await c.env.DB.prepare('UPDATE api_keys SET name = ? WHERE id = ? AND revoked_at IS NULL').bind(name, c.req.param('id')).run();
+  return result.meta.changes ? c.json({ ok: true }) : c.json({ error: 'API key tidak ditemukan.' }, 404);
+});
+auth.post('/api-keys/:id/rotate', async (c) => {
+  if (!(await sessionUserFromToken(c.env, c.req.header('Authorization')))) return c.json({ error: 'Forbidden' }, 403);
+  const token = newToken();
+  const result = await c.env.DB.prepare('UPDATE api_keys SET token_hash = ?, token_preview = ? WHERE id = ? AND revoked_at IS NULL')
+    .bind(await sha256(token), token.slice(-4), c.req.param('id')).run();
+  return result.meta.changes ? c.json({ token }) : c.json({ error: 'API key tidak ditemukan.' }, 404);
 });
 auth.delete('/api-keys/:id', async (c) => {
   if (!(await sessionUserFromToken(c.env, c.req.header('Authorization')))) return c.json({ error: 'Forbidden' }, 403);

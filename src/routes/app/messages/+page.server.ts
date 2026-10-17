@@ -6,14 +6,20 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
   const sessionId = url.searchParams.get('sessionId') ?? '';
   const filters = new URLSearchParams(url.searchParams);
   filters.set('direction', 'outgoing');
+  const [history, sessionList] = await Promise.allSettled([
+    api(`/messages/logs?${filters}`, {}, cookies.get('wg_session')),
+    api('/sessions', {}, cookies.get('wg_session'))
+  ]);
   let logs: Log[] = [], next: { before: number; beforeId: string } | null = null, logError = '';
   try {
-    const response = await api(`/messages/logs?${filters}`, {}, cookies.get('wg_session'));
+    if (history.status === 'rejected') throw history.reason;
+    const response = history.value;
     if (!response.ok) throw new Error();
-    ({ logs, next } = await response.json() as { logs: Log[]; next: typeof next });
+    ({ logs, next } = await response.json() as { logs: Log[]; next: { before: number; beforeId: string } | null });
   } catch { logError = 'Riwayat pesan belum dapat dimuat.'; }
   try {
-    const response = await api('/sessions', {}, cookies.get('wg_session'));
+    if (sessionList.status === 'rejected') throw sessionList.reason;
+    const response = sessionList.value;
     if (!response.ok) throw new Error();
     const { sessions } = await response.json() as { sessions: { id: string; name: string; status: { state: string } }[] };
     return { sessions, sessionId, idempotencyKey: crypto.randomUUID(), error: '', logs, next, logError };

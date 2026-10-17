@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Breadcrumb } from '@nqmcreative/ui/matte';
-	import { Radio } from '@lucide/svelte';
 	let { eyebrow, title, children }: { eyebrow: string; title: string; children: Snippet } = $props();
 </script>
 
@@ -12,7 +11,6 @@
 			<a href="/" class="font-heading text-xl font-medium tracking-tight">waflow</a>
 		</div>
 		<div class="relative z-10 my-auto max-w-xl py-16">
-			<div class="mb-8 inline-flex items-center gap-2 border border-white/30 px-3 py-2 font-mono text-[11px] uppercase tracking-[.16em] text-[#c8e7de]"><Radio size={14} /> Cloudflare native</div>
 			<h2 class="font-heading text-5xl font-medium leading-[1.09] tracking-tight xl:text-6xl">Kelola setiap koneksi WhatsApp dari satu panel.</h2>
 		</div>
 	</aside>

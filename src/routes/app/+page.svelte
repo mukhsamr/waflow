@@ -1,7 +1,7 @@
 <script lang="ts">
  import { RadioTower, Send, Webhook, Activity, KeyRound, Code } from '@lucide/svelte';
  let { data } = $props();
- const shortcuts = [{ href:'/app/sessions', label:'Sesi WhatsApp', icon:RadioTower },{ href:'/app/messages', label:'Kirim teks', icon:Send },{ href:'/app/webhooks', label:'Webhook', icon:Webhook },{ href:'/app/activity', label:'Log aktivitas', icon:Activity },{ href:'/app/settings', label:'API key', icon:KeyRound },{ href:'/app/api', label:'Panduan API', icon:Code }];
+ const shortcuts = [{ href:'/app/sessions', label:'Sesi WhatsApp', icon:RadioTower },{ href:'/app/messages', label:'Kirim teks', icon:Send },{ href:'/app/webhooks', label:'Webhook', icon:Webhook },{ href:'/app/activity', label:'Log aktivitas', icon:Activity },{ href:'/app/api-keys', label:'API key', icon:KeyRound },{ href:'/app/api', label:'Panduan API', icon:Code }];
 </script>
 <svelte:head><title>Ringkasan · waflow</title></svelte:head>
 <h1 class="font-heading text-3xl font-medium tracking-tight">Ringkasan</h1>

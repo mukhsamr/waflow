@@ -12,7 +12,7 @@
     "deploy": "bun scripts/deploy.ts",
     "db:local:setup": "wrangler d1 migrations apply DB --local",
     "check:deploy": "bun scripts/deploy-check.ts && bun scripts/deploy-script-check.ts",
-    "test": "bun tests/messaging-check.ts && bun tests/webhooks-check.ts && bun tests/gateway-worker-smoke.ts && bun tests/webhooks-worker-smoke.ts && bun tests/app-worker-smoke.ts",
+    "test": "bun tests/request-example-check.ts && bun tests/messaging-check.ts && bun tests/webhooks-check.ts && bun tests/gateway-worker-smoke.ts && bun tests/webhooks-worker-smoke.ts && bun tests/app-worker-smoke.ts",
     "gen": "wrangler types"
   },
   "patchedDependencies": {
@@ -20,15 +20,15 @@
     "protobufjs@7.6.6": "patches/protobufjs@7.6.6.patch"
   },
   "dependencies": {
-    "pino": "^10.3.1",
-    "hono": "^4.13.12",
-    "@nqmcreative/ui": "^0.5.1",
-    "drizzle-orm": "^0.45.3",
     "@lucide/svelte": "^1.49.0",
-    "qrcode": "^1.5.4",
-    "@whiskeysockets/baileys": "^7.0.0-rc14"
+    "@nqmcreative/ui": "^0.5.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "hono": "^4.13.12",
+    "pino": "^10.3.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261002.1",
     "@sveltejs/adapter-cloudflare": "^8.0.0",
     "@sveltejs/kit": "^3.0.0",
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
@@ -40,12 +40,9 @@
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",
-    "wrangler": "^4.146.0",
-    "@cloudflare/workers-types": "^5.20261002.1",
-    "drizzle-kit": "^0.31.11"
+    "wrangler": "^4.146.0"
   },
   "imports": {
-    "#lib": "./src/lib/index.js",
     "#lib/*": "./src/lib/*"
   }
 }

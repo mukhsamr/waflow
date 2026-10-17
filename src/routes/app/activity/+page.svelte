@@ -11,7 +11,7 @@
  const older = () => `/app/activity?${new URLSearchParams({ sessionId:data.sessionId,status:data.status,before:String(data.next?.before),beforeId:data.next?.beforeId ?? '' })}`;
  function filter(event: Event) {
   const form = (event.currentTarget as HTMLSelectElement).form!;
-  void goto(`/app/activity?${new URLSearchParams(new FormData(form) as Iterable<[string,string]>)}`, { keepFocus: true, noScroll: true });
+  void goto(`/app/activity?${new URLSearchParams(Array.from(new FormData(form)) as [string,string][])}`, { reset: false });
  }
 </script>
 <svelte:head><title>Log aktivitas · waflow</title></svelte:head>
