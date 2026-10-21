@@ -27,7 +27,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({
 try {
  const db = await mf.getD1Database('DB');
  await db.exec('CREATE TABLE wa_sessions (id TEXT PRIMARY KEY, name TEXT, created_by TEXT, created_at INTEGER)');
- for (const file of ['0005_messages.sql', '0006_webhooks.sql', '0007_conversations.sql', '0008_gateway_events.sql']) {
+ for (const file of ['0005_messages.sql', '0006_webhooks.sql', '0007_conversations.sql', '0008_gateway_events.sql', '0010_multiple_messages.sql']) {
   for (const statement of (await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8')).split(';').filter(x => x.trim())) await db.prepare(statement).run();
  }
  await db.exec("INSERT INTO wa_sessions VALUES ('test', 'Test', 'env-owner', 0), ('other', 'Other', 'env-owner', 0)");
@@ -85,6 +85,32 @@ try {
  assert.ok(history.deliveries.every(d=>!('payload' in d)));
  const blocked = await mf.dispatchFetch('http://local/api/messages', { method: 'POST', headers, body: JSON.stringify({ sessionId: 'test', recipient: "628123456789", text: 'Must never send', idempotencyKey: 'test-no-send' }) });
  assert.equal(blocked.status, 409);
+ const invalidMultiple = await mf.dispatchFetch('http://local/api/messages/multiple',{method:'POST',headers,body:JSON.stringify({sessionId:'test',recipients:'bad',text:'Test',delaySeconds:5,idempotencyKey:'bulk-worker-test'})});
+ assert.equal(invalidMultiple.status,400);
+ const offlineMultiple = await mf.dispatchFetch('http://local/api/messages/multiple',{method:'POST',headers,body:JSON.stringify({sessionId:'test',recipients:pn.split('@')[0],text:'Test',delaySeconds:5,idempotencyKey:'bulk-worker-test'})});
+ assert.equal(offlineMultiple.status,409);
+ const batchId = 'batch:test:bulk-worker-test';
+ const recipients = [pn.split('@')[0], '628987654321'];
+ await db.prepare('INSERT INTO message_batches (id,session_id,payload) VALUES (?,?,?)').bind(batchId,'test',JSON.stringify({recipients,text:'Controlled bulk',delay:2})).run();
+ const createdAt = Date.now();
+ await db.batch([
+  db.prepare("INSERT INTO messages (id,session_id,direction,jid,text,status,created_at,updated_at,delay_seconds) VALUES (?,'test','outgoing',?,'Controlled bulk','sent',?,?,2)").bind(`${batchId}:0`,pn,createdAt,createdAt),
+  db.prepare("INSERT INTO messages (id,session_id,direction,jid,text,status,created_at,updated_at,previous_id,delay_seconds) VALUES (?,'test','outgoing',?,'Controlled bulk','queued',?,?,?,2)").bind(`${batchId}:1`,'628987654321@s.whatsapp.net',createdAt,createdAt,`${batchId}:0`)
+ ]);
+ await outgoing.send({kind:'outgoing',sessionId:'test',id:`${batchId}:1`});
+ await sleep(250);
+ assert.equal((await db.prepare('SELECT status FROM messages WHERE id=?').bind(`${batchId}:1`).first()).status,'queued','Worker must preserve the gap before calling the DO');
+ let advanced = false;
+ for(let i=0;i<80;i++) {
+  if ((await db.prepare('SELECT status FROM messages WHERE id=?').bind(`${batchId}:1`).first()).status === 'sending') { advanced=true; break; }
+  await sleep(100);
+ }
+ assert.ok(advanced,'Delayed Queue must resume the successor after the gap');
+ const repeat = await mf.dispatchFetch('http://local/api/messages/multiple',{method:'POST',headers,body:JSON.stringify({sessionId:'test',recipients:recipients.join('\n'),text:'Controlled bulk',delaySeconds:2,idempotencyKey:'bulk-worker-test'})});
+ assert.equal(repeat.status,202);
+ assert.equal((await repeat.json() as {count:number}).count,2);
+ assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM messages WHERE id LIKE ?').bind(`${batchId}:%`).first()).count,2);
+ console.log('Worker Multiple smoke passed: validation, disconnected rejection, real D1 batch, Queue delay, DO retry, idempotent replay. No WhatsApp sent.');
  console.log('Worker gateway smoke passed: metadata logs, removed chats, four signed webhook event types through D1/DO/Queues, monotonic receipts, disconnected send blocked. No WhatsApp sent.');
 } finally { await mf.dispose(); }
 

@@ -30,7 +30,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({
 try {
  const db = await mf.getD1Database('DB');
  await db.exec('CREATE TABLE wa_sessions (id TEXT PRIMARY KEY, name TEXT, created_by TEXT, created_at INTEGER)');
- for (const file of ['0005_messages.sql', '0006_webhooks.sql', '0007_conversations.sql', '0008_gateway_events.sql']) {
+ for (const file of ['0005_messages.sql', '0006_webhooks.sql', '0007_conversations.sql', '0008_gateway_events.sql', '0010_multiple_messages.sql']) {
   const sql = await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8');
   for (const statement of sql.split(';').filter(x => x.trim())) await db.prepare(statement).run();
  }

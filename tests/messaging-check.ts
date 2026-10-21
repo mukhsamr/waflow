@@ -103,13 +103,14 @@ ctx.storage.sql.exec("DELETE FROM auth WHERE key='creds'");
 alarmAt = null;
 console.log('Messaging check passed: concurrent dedup, persisted outcomes, interrupted sends, incoming outbox.');
 
-const { default: messaging, consumeMessages } = await import('../src/lib/server/gateway/messaging');
+const { default: messaging, consumeMessages, recoverMessages } = await import('../src/lib/server/gateway/messaging');
 db.exec('CREATE TABLE wa_sessions (id TEXT PRIMARY KEY, name TEXT NOT NULL)');
 db.exec("INSERT INTO wa_sessions VALUES ('test-session', 'Test')");
 db.exec(await Bun.file(new URL('../migrations/0005_messages.sql', import.meta.url)).text());
 db.exec(await Bun.file(new URL('../migrations/0006_webhooks.sql', import.meta.url)).text());
 db.exec(await Bun.file(new URL('../migrations/0007_conversations.sql', import.meta.url)).text());
 db.exec(await Bun.file(new URL('../migrations/0008_gateway_events.sql', import.meta.url)).text());
+db.exec(await Bun.file(new URL('../migrations/0010_multiple_messages.sql', import.meta.url)).text());
 const env = {
   ADMIN_EMAIL: 'test@example.test', ADMIN_PASSWORD: 'local', SESSION_SECRET: 'test-secret-'.repeat(4),
   DB: { prepare: (sql: string) => {
@@ -201,6 +202,50 @@ ctx.storage.sql.exec('INSERT INTO receipt_outbox VALUES (?, ?)', waId, JSON.stri
 await consumeMessages({ messages: [receiptItem] } as never, peerEnv as never);
 assert.equal(db.query("SELECT wa_ack FROM messages WHERE id='out:test-session:receipt-test'").get()?.wa_ack, -1);
 console.log('Gateway check passed: filtered metadata logs, removed conversations, receipt identity and persistence, no read-status downgrade.');
+// Multiple sends persist atomically and only advance after the configured gap.
+const published: { body: {id:string}; options?: {delaySeconds:number} }[] = [];
+let sends = 0;
+const multipleEnv = { ...env,
+  DB: { ...env.DB, batch: async (statements: {run:()=>Promise<unknown>}[]) => { const results = []; for (const statement of statements) results.push(await statement.run()); return results; } },
+  OUTGOING_QUEUE: { send: async (body: {id:string}, options?: {delaySeconds:number}) => { published.push({body,options}); } },
+  WA_SESSIONS: { idFromName: (id:string) => id, get: () => ({ status: async () => ({state:'connected'}), sendText: async () => { sends++; return {status:'sent'}; } }) }
+};
+const multipleBody = {sessionId:'test-session',idempotencyKey:'multiple-check',recipients:'628123456789\n628987654321\n628123456789',text:'Bulk check',delaySeconds:5};
+const postMultiple = (body:unknown) => messaging.request('http://test/multiple',{method:'POST',headers,body:JSON.stringify(body)},multipleEnv as never);
+assert.equal((await messaging.request('http://test/multiple',{method:'POST',body:'{}'},multipleEnv as never)).status,401);
+for (const change of [{recipients:'invalid'}, {delaySeconds:0}, {delaySeconds:1.5}, {delaySeconds:3601}, {recipients:Array.from({length:101},(_,i)=>String(628123450000+i)).join('\n')}]) assert.equal((await postMultiple({...multipleBody,...change})).status,400);
+assert.equal((await postMultiple(multipleBody)).status,202);
+assert.equal((await postMultiple(multipleBody)).status,202);
+assert.equal((await postMultiple({...multipleBody,text:'Changed'})).status,409);
+const batchRows = db.query("SELECT * FROM messages WHERE id LIKE 'batch:%' ORDER BY id").all() as {id:string;previous_id:string|null}[];
+assert.equal(batchRows.length,2);
+assert.equal(batchRows[1].previous_id,batchRows[0].id);
+const consumeBulk = async (id:string) => {
+ let acknowledged = false;
+ await consumeMessages({messages:[{body:{kind:'outgoing',sessionId:'test-session',id},attempts:1,ack:()=>{acknowledged=true;},retry:()=>{throw new Error('Unexpected send failure');}}]} as never,multipleEnv as never);
+ assert.ok(acknowledged);
+};
+await consumeBulk(batchRows[1].id);
+assert.equal(sends,0,'A successor cannot pass its pending predecessor');
+await consumeBulk(batchRows[0].id);
+assert.equal(sends,1);
+assert.equal(published.at(-1)?.options?.delaySeconds,5);
+await consumeBulk(batchRows[1].id);
+assert.equal(sends,1,'Early and duplicate delivery must respect the persisted gap');
+db.prepare('UPDATE messages SET updated_at = ? WHERE id = ?').run(Date.now()-6000,batchRows[0].id);
+await consumeBulk(batchRows[1].id);
+assert.equal(sends,2);
+await consumeBulk(batchRows[1].id);
+assert.equal(sends,2,'Terminal messages must not send again');
+db.prepare("UPDATE messages SET status='queued',updated_at=? WHERE id=?").run(Date.now()-600000,batchRows[1].id);
+db.prepare('UPDATE messages SET updated_at=? WHERE id=?').run(Date.now(),batchRows[0].id);
+published.length=0;
+await recoverMessages({} as never,multipleEnv as never);
+assert.ok(!published.some(p=>p.body.id===batchRows[1].id),'Cron cannot bypass the gap');
+db.prepare('UPDATE messages SET updated_at=? WHERE id=?').run(Date.now()-6000,batchRows[0].id);
+await recoverMessages({} as never,multipleEnv as never);
+assert.ok(published.some(p=>p.body.id===batchRows[1].id),'Cron recovers a lost successor publication');
+console.log('Multiple check passed: validation, deduplication, idempotency, predecessor ordering, delayed publication, early delivery, terminal dedup.');
 db.close();
 
 

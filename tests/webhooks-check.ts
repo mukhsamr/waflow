@@ -9,6 +9,7 @@ db.exec("INSERT INTO messages (id,session_id,direction,jid,text,status,created_a
 db.exec("INSERT INTO webhooks VALUES ('test','https://93.184.216.34/hook','encrypted','old-revision')");
 db.exec("INSERT INTO webhook_deliveries VALUES ('legacy','test','old-revision','pending',2,503,'Receiver error',10,20)");
 db.exec(await Bun.file(new URL('../migrations/0008_gateway_events.sql', import.meta.url)).text());
+db.exec(await Bun.file(new URL('../migrations/0010_multiple_messages.sql', import.meta.url)).text());
 assert.deepEqual(db.query('SELECT * FROM webhook_deliveries').get(), {id:'legacy',session_id:'test',revision:'old-revision',status:'pending',attempts:2,http_status:503,error:'Receiver error',next_at:10,updated_at:20,event:'MESSAGES_UPSERT',payload:null});
 assert.deepEqual(db.query('SELECT enabled,events FROM webhooks').get(), {enabled:1,events:'["MESSAGES_UPSERT"]'});
 db.exec("DELETE FROM webhook_deliveries; DELETE FROM webhooks; DELETE FROM messages");

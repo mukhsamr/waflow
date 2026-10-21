@@ -20,7 +20,7 @@
 	const navigation = [
 		{ href: '/app', label: 'Ringkasan', icon: LayoutDashboard },
 		{ href: '/app/sessions', label: 'Sesi WhatsApp', icon: RadioTower },
-		{ href: '/app/messages', label: 'Kirim teks', icon: Send },
+		{ href: '/app/messages', label: 'Kirim Pesan', icon: Send },
 		{ href: '/app/webhooks', label: 'Webhook', icon: Webhook },
 		{ href: '/app/activity', label: 'Log aktivitas', icon: Activity },
 		{ href: '/app/api-keys', label: 'API key', icon: KeyRound },
@@ -30,7 +30,7 @@
 		const path = page.url.pathname;
 		if (path === '/app') return [{ label: 'Ringkasan' }];
 		const items = [{ label: 'Ringkasan', href: '/app' }];
-		const labels: Record<string, string> = { '/app/sessions': 'Sesi WhatsApp', '/app/messages': 'Kirim teks', '/app/activity': 'Log aktivitas', '/app/settings': 'Pengaturan', '/app/api-keys': 'API key', '/app/webhooks': 'Webhook', '/app/api': 'Panduan API' };
+		const labels: Record<string, string> = { '/app/sessions': 'Sesi WhatsApp', '/app/messages': 'Kirim Pesan', '/app/activity': 'Log aktivitas', '/app/settings': 'Pengaturan', '/app/api-keys': 'API key', '/app/webhooks': 'Webhook', '/app/api': 'Panduan API' };
 		return [...items, { label: labels[path] ?? path.split('/').filter(Boolean).at(-1) ?? 'Halaman' }];
 	});
 </script>

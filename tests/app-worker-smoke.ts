@@ -56,12 +56,17 @@ try {
     assert.equal(response.status, 200, `${path}: ${pageHtml}`);
     assert.ok(pageHtml.includes('Buka navigasi') && pageHtml.includes('mobile-navigation'));
     assert.ok(!pageHtml.includes('Fitur bertahap') && !pageHtml.includes('Control center') && !pageHtml.includes('Notifikasi'));
+    if (path === '/app/messages') assert.ok(pageHtml.includes('Single') && pageHtml.includes('Multiple') && pageHtml.includes('Kirim Pesan'));
     if (path === '/app/api-keys') assert.equal((pageHtml.match(/<a[^>]*aria-current="page"/g) ?? []).length, 1);
   }
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const settingsHtml = await (await mf.dispatchFetch('http://local/app/settings', { headers:{Cookie:cookie} })).text();
   assert.ok(!settingsHtml.includes('Nama key') && !settingsHtml.includes('?/key'));
   const formHeaders = { Accept:'text/html', Origin:'http://local', Cookie:cookie, 'Content-Type':'application/x-www-form-urlencoded' };
+  const multipleForm = await mf.dispatchFetch('http://local/app/messages?/send', {method:'POST',headers:formHeaders,body:new URLSearchParams({mode:'multiple',sessionId:'test-session',recipients:'invalid',text:'Test',delaySeconds:'5',idempotencyKey:'form-multiple-check'}).toString()});
+  assert.equal(multipleForm.status,400);
+  const multipleHtml = await multipleForm.text();
+  assert.ok(multipleHtml.includes('Jeda antar pesan (detik)') && multipleHtml.includes('invalid') && multipleHtml.includes('1–100 nomor unik'));
   const keyPage = await mf.dispatchFetch('http://local/app/api-keys?/key', { method:'POST', headers:formHeaders, body:'name=Route+test' });
   assert.equal(keyPage.status, 200);
   const keyHtml = await keyPage.text();
